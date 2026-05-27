@@ -1,0 +1,30 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "API Fastify para autenticação, usuários e ramais",
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/jwt": "^9.0.0",
+    "@fastify/swagger": "^9.0.0",
+    "@fastify/swagger-ui": "^5.2.6",
+    "@prisma/client": "^6.0.0",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.0.0",
+    "fastify": "^5.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.0.0"
+  }
+}
