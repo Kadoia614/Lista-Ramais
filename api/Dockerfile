@@ -12,8 +12,5 @@ COPY . .
 
 RUN npm run prisma:generate
 
-# Expõe porta
-EXPOSE 3000
-
 # Sobe aplicação
 CMD ["sh", "-c", "npm run prisma:migrate && npm start"]
