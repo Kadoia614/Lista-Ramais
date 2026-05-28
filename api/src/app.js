@@ -1,67 +1,101 @@
-import cors from '@fastify/cors';
-import jwt from '@fastify/jwt';
-import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
-import fastify from 'fastify';
-import { PrismaClient } from '@prisma/client';
-import { authPlugin } from './plugins/auth.js';
-import { createAuthService } from './modules/auth/auth.service.js';
-import { authRoutes } from './modules/auth/auth.routes.js';
-import { createRamaisService } from './modules/ramais/ramais.service.js';
-import { ramaisRoutes } from './modules/ramais/ramais.routes.js';
-import { publicRoutes } from './modules/public/public.routes.js';
-import { createUsersService } from './modules/users/users.service.js';
-import { usersRoutes } from './modules/users/users.routes.js';
+import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
+import helmet from "@fastify/helmet";
+import fastify from "fastify";
+import { PrismaClient } from "@prisma/client";
+import { authPlugin } from "./plugins/auth.js";
+import { createAuthService } from "./modules/auth/auth.service.js";
+import { authRoutes } from "./modules/auth/auth.routes.js";
+import { createRamaisService } from "./modules/ramais/ramais.service.js";
+import { ramaisRoutes } from "./modules/ramais/ramais.routes.js";
+import { publicRoutes } from "./modules/public/public.routes.js";
+import { createUsersService } from "./modules/users/users.service.js";
+import { usersRoutes } from "./modules/users/users.routes.js";
 
 export async function buildApp() {
   const app = fastify({
-    logger: true,
+    ignoreTrailingSlash: true,
+    logger: {
+      transport: {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+        },
+      },
+      serializers: {
+        req(request) {
+          return {
+            method: request.method,
+            url: request.url,
+            remoteAddress: request.ip, // Captura o IP real (via trustProxy)
+            userAgent: request.headers["user-agent"], // Auditoria LGPD
+          };
+        },
+      },
+    },
+    trustProxy: true, // Reconhece cabeçalhos X-Forwarded-For do Traefik/Dokploy
   });
 
   const prisma = new PrismaClient();
 
-  app.decorate('prisma', prisma);
-  app.decorate('usersService', createUsersService(prisma));
-  app.decorate('ramaisService', createRamaisService(prisma));
+  app.decorate("prisma", prisma);
+  app.decorate("usersService", createUsersService(prisma));
+  app.decorate("ramaisService", createRamaisService(prisma));
 
   await app.register(cors, {
-    origin: true,
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(",")
+      : true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  });
+
+  // --- PLUGINS ---
+
+  await app.register(helmet, {
+    contentSecurityPolicy: false, // Mantido desativado para não quebrar scripts atuais
+    global: true,
+  });
+
+  await app.register(helmet, {
+    contentSecurityPolicy: false, // Mantido desativado para não quebrar scripts atuais
+    global: true,
   });
 
   await app.register(jwt, {
-    secret: process.env.JWT_SECRET ?? 'troque-este-segredo-em-producao',
+    secret: process.env.JWT_SECRET ?? "troque-este-segredo-em-producao",
   });
 
-  app.decorate('authService', createAuthService(app.usersService, app.jwt));
+  app.decorate("authService", createAuthService(app.usersService, app.jwt));
 
   await app.register(swagger, {
     openapi: {
-      openapi: '3.0.3',
+      openapi: "3.0.3",
       info: {
-        title: 'Ramais API',
-        description: 'API modular para usuários, autenticação e ramais',
-        version: '1.0.0',
+        title: "Ramais API",
+        description: "API modular para usuários, autenticação e ramais",
+        version: "1.0.0",
       },
       components: {
         securitySchemes: {
           bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
           },
         },
       },
-      servers: [{ url: '/api' }],
+      servers: [{ url: "/api" }],
     },
   });
 
   await app.register(swaggerUi, {
-    routePrefix: '/docs',
+    routePrefix: "/docs",
     uiConfig: {
-      docExpansion: 'list',
+      docExpansion: "list",
       deepLinking: false,
     },
   });
@@ -70,29 +104,32 @@ export async function buildApp() {
   // `authenticate` decoration from the root instance.
   await authPlugin(app);
 
-  app.get('/api/health', async () => ({ status: 'ok' }));
+  app.get("/api/health", async () => ({ status: "ok" }));
 
-  await app.register(async (api) => {
-    await api.register(authRoutes);
-    await api.register(usersRoutes);
-    await api.register(ramaisRoutes);
-    await api.register(publicRoutes);
-  }, {
-    prefix: '/api',
-  });
+  await app.register(
+    async (api) => {
+      await api.register(authRoutes);
+      await api.register(usersRoutes);
+      await api.register(ramaisRoutes);
+      await api.register(publicRoutes);
+    },
+    {
+      prefix: "/api",
+    },
+  );
 
   // Global auth guard: protect all routes by default, but allow public and
   // unauthenticated auth endpoints (login/bootstrap), health and docs.
-  app.addHook('preHandler', async (request, reply) => {
-    const url = request.raw.url || '';
+  app.addHook("preHandler", async (request, reply) => {
+    const url = request.raw.url || "";
 
     // Allow public endpoints, health check and docs
     if (
-      url.startsWith('/api/public') ||
-      url === '/api/auth/login' ||
-      url === '/api/auth/bootstrap' ||
-      url.startsWith('/docs') ||
-      url === '/api/health'
+      url.startsWith("/api/public") ||
+      url === "/api/auth/login" ||
+      url === "/api/auth/bootstrap" ||
+      url.startsWith("/docs") ||
+      url === "/api/health"
     ) {
       return;
     }
@@ -110,12 +147,12 @@ export async function buildApp() {
     return reply.code(statusCode).send({
       message:
         statusCode === 500
-          ? 'Erro interno do servidor'
-          : error.message ?? 'Erro inesperado',
+          ? "Erro interno do servidor"
+          : (error.message ?? "Erro inesperado"),
     });
   });
 
-  app.addHook('onClose', async () => {
+  app.addHook("onClose", async () => {
     await prisma.$disconnect();
   });
 

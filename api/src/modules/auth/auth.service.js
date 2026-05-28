@@ -19,7 +19,7 @@ export function createAuthService(usersService, jwt) {
         throw error;
       }
 
-      const token = jwt.sign({ sub: user.id, email: user.email });
+      const token = jwt.sign({ sub: user.id, email: user.email }, { expiresIn: '15m' });
 
       return {
         token,
