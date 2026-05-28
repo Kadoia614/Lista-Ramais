@@ -10,8 +10,8 @@ RUN npm install --omit=dev
 # Copia build já compilado
 COPY . .
 
-RUN npm run prisma:migrate
 RUN npm run prisma:generate
+RUN npm run prisma:migrate
 
 # Expõe porta
 EXPOSE 3000
