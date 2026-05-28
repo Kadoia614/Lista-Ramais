@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm install --omit=dev
+RUN npm prisma:generate
+RUN npm prisma:migrate
 
 # Copia build já compilado
 COPY . .
