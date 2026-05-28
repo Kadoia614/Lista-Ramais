@@ -6,11 +6,12 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm install --omit=dev
-RUN npm run prisma:generate
-RUN npm run prisma:migrate
 
 # Copia build já compilado
 COPY . .
+
+RUN npm run prisma:migrate
+RUN npm run prisma:generate
 
 # Expõe porta
 EXPOSE 3000
