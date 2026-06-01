@@ -1,6 +1,9 @@
 import { Link, Outlet } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 export function PublicLayout() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <main className="app-shell public-shell">
       <header className="topbar public-topbar">
@@ -15,8 +18,8 @@ export function PublicLayout() {
           <Link to="/public" className="ghost-link">
             Ramais públicos
           </Link>
-          <Link to="/login" className="ghost-link">
-            Login
+          <Link to={isAuthenticated ? '/admin/users' : '/login'} className="ghost-link">
+            {isAuthenticated ? 'Dashboard' : 'Login'}
           </Link>
         </nav>
       </header>

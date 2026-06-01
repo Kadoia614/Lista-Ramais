@@ -306,6 +306,26 @@
     @apply inline-flex w-fit rounded-md bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800;
   }
 
+  .status-pill {
+    @apply inline-flex w-fit rounded-md px-2.5 py-1 text-xs font-bold;
+  }
+
+  .status-pill.active {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+
+  .status-pill.locked {
+    @apply bg-rose-100 text-rose-800;
+  }
+
+  .pagination-bar {
+    @apply mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .pagination-actions {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center;
+  }
+
   .narrow-card {
     @apply max-w-xl;
   }

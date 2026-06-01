@@ -10,6 +10,18 @@ function sanitizeRamal(ramal) {
   };
 }
 
+function buildPagination({ page = 1, perPage = 10 } = {}) {
+  const currentPage = Math.max(Number(page) || 1, 1);
+  const currentPerPage = Math.min(Math.max(Number(perPage) || 10, 1), 100);
+
+  return {
+    page: currentPage,
+    perPage: currentPerPage,
+    skip: (currentPage - 1) * currentPerPage,
+    take: currentPerPage,
+  };
+}
+
 export function createRamaisService(prisma) {
   return {
     sanitizeRamal,
@@ -36,13 +48,41 @@ export function createRamaisService(prisma) {
       return sanitizeRamal(ramal);
     },
 
-    async list() {
-      const ramais = await prisma.ramal.findMany({
-        where: { deletedAt: null },
-        orderBy: { nome: 'asc' },
-      });
+    async list(options = {}) {
+      const { page, perPage, skip, take } = buildPagination(options);
+      const search = options.search?.trim();
+      const where = {
+        deletedAt: null,
+        ...(search
+          ? {
+              OR: [
+                { nome: { contains: search } },
+                { setor: { contains: search } },
+                { ramal: { contains: search } },
+              ],
+            }
+          : {}),
+      };
 
-      return ramais.map(sanitizeRamal);
+      const [ramais, total] = await prisma.$transaction([
+        prisma.ramal.findMany({
+          where,
+          orderBy: { nome: 'asc' },
+          skip,
+          take,
+        }),
+        prisma.ramal.count({ where }),
+      ]);
+
+      return {
+        data: ramais.map(sanitizeRamal),
+        pagination: {
+          page,
+          perPage,
+          total,
+          totalPages: Math.max(Math.ceil(total / perPage), 1),
+        },
+      };
     },
 
     async findById(id) {

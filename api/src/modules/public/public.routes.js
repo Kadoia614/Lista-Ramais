@@ -1,4 +1,14 @@
 export async function publicRoutes(app) {
+  const paginationQuerySchema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      page: { type: 'integer', minimum: 1, default: 1 },
+      perPage: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+      search: { type: 'string' },
+    },
+  };
+
   function publicRamal(ramal) {
     return {
       nome: ramal.nome,
@@ -13,9 +23,17 @@ export async function publicRoutes(app) {
       schema: {
         tags: ['Public'],
         summary: 'Lista pública de ramais',
+        querystring: paginationQuerySchema,
       },
     },
-    async () => app.ramaisService.list().then((ramais) => ramais.map(publicRamal)),
+    async (request) => {
+      const result = await app.ramaisService.list(request.query);
+
+      return {
+        ...result,
+        data: result.data.map(publicRamal),
+      };
+    },
   );
 
   app.get(

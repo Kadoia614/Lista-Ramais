@@ -101,7 +101,7 @@ async function run() {
   }
 
   const list = await listRes.json();
-  if (!Array.isArray(list) || list.length === 0) {
+  if (!Array.isArray(list.data) || list.data.length === 0 || !list.pagination) {
     console.error('List ramais unexpected result', list);
     process.exit(10);
   }

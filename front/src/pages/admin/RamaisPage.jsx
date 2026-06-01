@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
 import { DataTable } from '../../components/DataTable';
 import { Modal } from '../../components/Modal';
+import { Pagination } from '../../components/Pagination';
 import { useToast } from '../../toast/ToastContext';
 
 const emptyForm = { nome: '', setor: '', ramal: '' };
+const perPage = 10;
 
 export function RamaisPage() {
   const { pushToast } = useToast();
   const [ramais, setRamais] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -17,24 +21,25 @@ export function RamaisPage() {
   const loadRamais = useCallback(async () => {
     setLoading(true);
     try {
-      setRamais(await api.listRamais());
+      const result = await api.listRamais({ page, perPage, search });
+      setRamais(result.data);
+      setPagination(result.pagination);
     } catch (error) {
       pushToast({ type: 'error', title: 'Erro ao carregar ramais', description: error.message });
     } finally {
       setLoading(false);
     }
-  }, [pushToast]);
+  }, [page, pushToast, search]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRamais();
   }, [loadRamais]);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return ramais;
-    return ramais.filter((item) => `${item.nome} ${item.setor} ${item.ramal}`.toLowerCase().includes(term));
-  }, [search, ramais]);
+  function handleSearchChange(event) {
+    setSearch(event.target.value);
+    setPage(1);
+  }
 
   function openCreate() {
     setForm(emptyForm);
@@ -78,7 +83,7 @@ export function RamaisPage() {
     }
   }
 
-  const rows = filtered.map((item) => [
+  const rows = ramais.map((item) => [
     item.nome,
     item.setor,
     item.ramal,
@@ -104,7 +109,7 @@ export function RamaisPage() {
             type="search"
             placeholder="Buscar nome, setor ou ramal"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
           />
           <button type="button" onClick={openCreate}>
             Novo ramal
@@ -114,6 +119,7 @@ export function RamaisPage() {
 
       {loading ? <div className="inline-alert">Carregando ramais...</div> : null}
       <DataTable columns={['Nome', 'Setor', 'Ramal', 'Ações']} rows={rows} />
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {modal ? (
         <Modal

@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  password            String
+  failedLoginAttempts Int       @default(0)
+  lockedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
   @@index([deletedAt])
+  @@index([lockedAt])
 }
 
 model Ramal {

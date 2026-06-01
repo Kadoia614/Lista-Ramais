@@ -10,6 +10,8 @@ export async function authPlugin(app) {
         select: {
           id: true,
           email: true,
+          failedLoginAttempts: true,
+          lockedAt: true,
           createdAt: true,
           updatedAt: true,
           deletedAt: true,
@@ -20,6 +22,10 @@ export async function authPlugin(app) {
         throw app.httpErrors.unauthorized('Token inválido ou expirado');
       }
 
+      if (user.lockedAt) {
+        throw app.httpErrors.unauthorized('Usuário bloqueado');
+      }
+
       request.currentUser = user;
     } catch (err) {
       if (err && err.statusCode === 401) throw err;
@@ -27,6 +33,5 @@ export async function authPlugin(app) {
     }
   });
 
-  // Alias for use as a Fastify preHandler: `preHandler: app.authGuard`
   app.decorate('authGuard', app.authenticate);
 }

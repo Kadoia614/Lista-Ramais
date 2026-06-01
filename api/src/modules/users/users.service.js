@@ -4,13 +4,37 @@ function sanitizeUser(user) {
   return {
     id: user.id,
     email: user.email,
+    failedLoginAttempts: user.failedLoginAttempts,
+    lockedAt: user.lockedAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     deletedAt: user.deletedAt,
   };
 }
 
+function buildPagination({ page = 1, perPage = 10 } = {}) {
+  const currentPage = Math.max(Number(page) || 1, 1);
+  const currentPerPage = Math.min(Math.max(Number(perPage) || 10, 1), 100);
+
+  return {
+    page: currentPage,
+    perPage: currentPerPage,
+    skip: (currentPage - 1) * currentPerPage,
+    take: currentPerPage,
+  };
+}
+
 export function createUsersService(prisma) {
+  async function resetLoginAttempts(id) {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedAt: null,
+      },
+    });
+  }
+
   return {
     sanitizeUser,
 
@@ -37,7 +61,36 @@ export function createUsersService(prisma) {
       return sanitizeUser(user);
     },
 
-    async list() {
+    async list(options = {}) {
+      const { page, perPage, skip, take } = buildPagination(options);
+      const search = options.search?.trim();
+      const where = {
+        deletedAt: null,
+        ...(search ? { email: { contains: search } } : {}),
+      };
+
+      const [users, total] = await prisma.$transaction([
+        prisma.user.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      return {
+        data: users.map(sanitizeUser),
+        pagination: {
+          page,
+          perPage,
+          total,
+          totalPages: Math.max(Math.ceil(total / perPage), 1),
+        },
+      };
+    },
+
+    async listAll() {
       const users = await prisma.user.findMany({
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
@@ -114,6 +167,40 @@ export function createUsersService(prisma) {
       return prisma.user.findFirst({
         where: { email, deletedAt: null },
       });
+    },
+
+    async registerFailedLogin(id) {
+      const user = await prisma.user.findUnique({ where: { id } });
+
+      if (!user) {
+        return null;
+      }
+
+      const failedLoginAttempts = user.failedLoginAttempts + 1;
+      const lockedAt = failedLoginAttempts >= 5 ? new Date() : user.lockedAt;
+
+      return prisma.user.update({
+        where: { id },
+        data: {
+          failedLoginAttempts,
+          lockedAt,
+        },
+      });
+    },
+
+    resetLoginAttempts,
+
+    async unlock(id) {
+      const currentUser = await prisma.user.findFirst({
+        where: { id, deletedAt: null },
+      });
+
+      if (!currentUser) {
+        return null;
+      }
+
+      const user = await resetLoginAttempts(id);
+      return sanitizeUser(user);
     },
 
     async changePassword(userId, currentPassword, newPassword) {

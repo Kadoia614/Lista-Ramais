@@ -1,5 +1,14 @@
 export async function ramaisRoutes(app) {
   const ramaisService = app.ramaisService;
+  const paginationQuerySchema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      page: { type: 'integer', minimum: 1, default: 1 },
+      perPage: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+      search: { type: 'string' },
+    },
+  };
 
   const createBodySchema = {
     type: 'object',
@@ -37,9 +46,10 @@ export async function ramaisRoutes(app) {
         tags: ['Ramais'],
         summary: 'Lista ramais ativos',
         security: [{ bearerAuth: [] }],
+        querystring: paginationQuerySchema,
       },
     },
-    async () => ramaisService.list(),
+    async (request) => ramaisService.list(request.query),
   );
 
   app.get(

@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
 import { DataTable } from '../../components/DataTable';
 import { Modal } from '../../components/Modal';
+import { Pagination } from '../../components/Pagination';
 import { useToast } from '../../toast/ToastContext';
 
 const emptyForm = { email: '', password: '' };
+const perPage = 10;
 
 export function UsersPage() {
   const { pushToast } = useToast();
   const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -17,24 +21,25 @@ export function UsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      setUsers(await api.listUsers());
+      const result = await api.listUsers({ page, perPage, search });
+      setUsers(result.data);
+      setPagination(result.pagination);
     } catch (error) {
       pushToast({ type: 'error', title: 'Erro ao carregar usuários', description: error.message });
     } finally {
       setLoading(false);
     }
-  }, [pushToast]);
+  }, [page, pushToast, search]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUsers();
   }, [loadUsers]);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return users;
-    return users.filter((user) => user.email.toLowerCase().includes(term));
-  }, [search, users]);
+  function handleSearchChange(event) {
+    setSearch(event.target.value);
+    setPage(1);
+  }
 
   function openCreate() {
     setForm(emptyForm);
@@ -48,6 +53,16 @@ export function UsersPage() {
 
   function openDelete(user) {
     setModal({ mode: 'delete', item: user });
+  }
+
+  async function unlockUser(user) {
+    try {
+      await api.unlockUser(user.id);
+      pushToast({ type: 'success', title: 'Usuário desbloqueado', description: user.email });
+      await loadUsers();
+    } catch (error) {
+      pushToast({ type: 'error', title: 'Falha ao desbloquear', description: error.message });
+    }
   }
 
   async function submitForm(event) {
@@ -80,10 +95,19 @@ export function UsersPage() {
     }
   }
 
-  const rows = filtered.map((user) => [
+  const rows = users.map((user) => [
     user.email,
+    <span className={user.lockedAt ? 'status-pill locked' : 'status-pill active'} key={`${user.id}-status`}>
+      {user.lockedAt ? 'Bloqueado' : 'Ativo'}
+    </span>,
+    user.failedLoginAttempts,
     formatDate(user.createdAt),
     <div className="row-actions" key={user.id}>
+      {user.lockedAt ? (
+        <button type="button" className="secondary-button" onClick={() => unlockUser(user)}>
+          Desbloquear
+        </button>
+      ) : null}
       <button type="button" className="secondary-button" onClick={() => openEdit(user)}>
         Editar
       </button>
@@ -101,12 +125,7 @@ export function UsersPage() {
           <p>Somente admin autenticado pode cadastrar novos usuários.</p>
         </div>
         <div className="page-actions">
-          <input
-            type="search"
-            placeholder="Buscar e-mail"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input type="search" placeholder="Buscar e-mail" value={search} onChange={handleSearchChange} />
           <button type="button" onClick={openCreate}>
             Novo usuário
           </button>
@@ -114,7 +133,8 @@ export function UsersPage() {
       </div>
 
       {loading ? <div className="inline-alert">Carregando usuários...</div> : null}
-      <DataTable columns={['E-mail', 'Criado em', 'Ações']} rows={rows} />
+      <DataTable columns={['E-mail', 'Status', 'Tentativas', 'Criado em', 'Ações']} rows={rows} />
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {modal ? (
         <Modal
@@ -161,7 +181,9 @@ export function UsersPage() {
               />
             </form>
           ) : (
-            <p><strong>{modal.item.email}</strong></p>
+            <p>
+              <strong>{modal.item.email}</strong>
+            </p>
           )}
         </Modal>
       ) : null}

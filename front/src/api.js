@@ -1,5 +1,18 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api';
 
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, value);
+    }
+  });
+
+  const value = query.toString();
+  return value ? `?${value}` : '';
+}
+
 async function request(path, options = {}) {
   const token = localStorage.getItem('ramais_token');
   const hasBody = options.body !== undefined && options.body !== null;
@@ -46,7 +59,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  listUsers: () => request('/users'),
+  listUsers: (params) => request(`/users${buildQuery(params)}`),
   createUser: (payload) =>
     request('/users', {
       method: 'POST',
@@ -58,7 +71,8 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
-  listRamais: () => request('/ramais'),
+  unlockUser: (id) => request(`/users/${id}/unlock`, { method: 'PATCH' }),
+  listRamais: (params) => request(`/ramais${buildQuery(params)}`),
   createRamal: (payload) =>
     request('/ramais', {
       method: 'POST',
@@ -70,7 +84,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteRamal: (id) => request(`/ramais/${id}`, { method: 'DELETE' }),
-  publicRamais: () => request('/public/ramais', { headers: {} }),
+  publicRamais: (params) => request(`/public/ramais${buildQuery(params)}`, { headers: {} }),
   publicRamalById: (id) => request(`/public/ramais/${id}`, { headers: {} }),
 };
 

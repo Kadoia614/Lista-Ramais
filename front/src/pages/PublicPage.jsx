@@ -1,25 +1,36 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { Pagination } from '../components/Pagination';
+
+const perPage = 10;
 
 export function PublicPage() {
   const [items, setItems] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setError('');
+
     api
-      .publicRamais()
-      .then((data) => setItems(data))
+      .publicRamais({ page, perPage, search })
+      .then((result) => {
+        setItems(result.data);
+        setPagination(result.pagination);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, search]);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return items;
-    return items.filter((item) => `${item.nome} ${item.setor} ${item.ramal}`.toLowerCase().includes(term));
-  }, [items, search]);
+  function handleSearchChange(event) {
+    setSearch(event.target.value);
+    setPage(1);
+  }
 
   return (
     <section className="page-card">
@@ -34,7 +45,7 @@ export function PublicPage() {
             type="search"
             placeholder="Buscar nome, setor ou ramal"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
       </div>
@@ -42,11 +53,11 @@ export function PublicPage() {
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
           <p className="text-xs font-bold uppercase text-emerald-800">Ramais cadastrados</p>
-          <strong className="text-2xl text-emerald-950">{items.length}</strong>
+          <strong className="text-2xl text-emerald-950">{pagination?.total ?? 0}</strong>
         </div>
         <div className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3">
-          <p className="text-xs font-bold uppercase text-sky-800">Resultados exibidos</p>
-          <strong className="text-2xl text-sky-950">{filtered.length}</strong>
+          <p className="text-xs font-bold uppercase text-sky-800">Nesta página</p>
+          <strong className="text-2xl text-sky-950">{items.length}</strong>
         </div>
       </div>
 
@@ -54,15 +65,17 @@ export function PublicPage() {
       {loading ? <div className="inline-alert">Carregando ramais...</div> : null}
 
       <div className="public-grid">
-        {filtered.map((item) => (
+        {items.map((item) => (
           <article key={item.ramal} className="public-row-card">
             <strong>{item.nome}</strong>
             <span>{item.setor}</span>
             <small>{item.ramal}</small>
           </article>
         ))}
-        {!loading && filtered.length === 0 ? <div className="inline-alert">Nenhum ramal encontrado.</div> : null}
+        {!loading && items.length === 0 ? <div className="inline-alert">Nenhum ramal encontrado.</div> : null}
       </div>
+
+      <Pagination pagination={pagination} onPageChange={setPage} />
     </section>
   );
 }

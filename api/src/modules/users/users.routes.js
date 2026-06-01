@@ -1,5 +1,14 @@
 export async function usersRoutes(app) {
   const usersService = app.usersService;
+  const paginationQuerySchema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      page: { type: 'integer', minimum: 1, default: 1 },
+      perPage: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+      search: { type: 'string' },
+    },
+  };
 
   app.post(
     '/users',
@@ -18,18 +27,6 @@ export async function usersRoutes(app) {
             password: { type: 'string', minLength: 6 },
           },
         },
-        response: {
-          201: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              email: { type: 'string' },
-              createdAt: { type: 'string' },
-              updatedAt: { type: 'string' },
-              deletedAt: { type: ['string', 'null'] },
-            },
-          },
-        },
       },
     },
     async (request, reply) => {
@@ -46,9 +43,10 @@ export async function usersRoutes(app) {
         tags: ['Users'],
         summary: 'Lista usuários ativos',
         security: [{ bearerAuth: [] }],
+        querystring: paginationQuerySchema,
       },
     },
-    async () => usersService.list(),
+    async (request) => usersService.list(request.query),
   );
 
   app.get(
@@ -104,6 +102,34 @@ export async function usersRoutes(app) {
         request.body.currentPassword,
         request.body.newPassword,
       );
+    },
+  );
+
+  app.patch(
+    '/users/:id/unlock',
+    {
+      preHandler: app.authenticate,
+      schema: {
+        tags: ['Users'],
+        summary: 'Desbloqueia um usuário',
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = await usersService.unlock(request.params.id);
+
+      if (!user) {
+        return reply.code(404).send({ message: 'Usuário não encontrado' });
+      }
+
+      return user;
     },
   );
 
