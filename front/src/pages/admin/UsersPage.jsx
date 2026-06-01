@@ -55,10 +55,15 @@ export function UsersPage() {
     setModal({ mode: 'delete', item: user });
   }
 
-  async function unlockUser(user) {
+  function openUnlock(user) {
+    setModal({ mode: 'unlock', item: user });
+  }
+
+  async function confirmUnlock() {
     try {
-      await api.unlockUser(user.id);
-      pushToast({ type: 'success', title: 'Usuário desbloqueado', description: user.email });
+      await api.unlockUser(modal.item.id);
+      pushToast({ type: 'success', title: 'Usuário desbloqueado', description: modal.item.email });
+      setModal(null);
       await loadUsers();
     } catch (error) {
       pushToast({ type: 'error', title: 'Falha ao desbloquear', description: error.message });
@@ -104,7 +109,7 @@ export function UsersPage() {
     formatDate(user.createdAt),
     <div className="row-actions" key={user.id}>
       {user.lockedAt ? (
-        <button type="button" className="secondary-button" onClick={() => unlockUser(user)}>
+        <button type="button" className="secondary-button" onClick={() => openUnlock(user)}>
           Desbloquear
         </button>
       ) : null}
@@ -138,17 +143,21 @@ export function UsersPage() {
 
       {modal ? (
         <Modal
-          title={modal.mode === 'create' ? 'Novo usuário' : modal.mode === 'edit' ? 'Editar usuário' : 'Excluir usuário'}
-          description={modal.mode === 'delete' ? 'Confirme a exclusão lógica deste usuário.' : 'Preencha os dados necessários.'}
+          title={getModalTitle(modal.mode)}
+          description={getModalDescription(modal.mode)}
           onClose={() => setModal(null)}
           footer={
-            modal.mode === 'delete' ? (
+            modal.mode === 'delete' || modal.mode === 'unlock' ? (
               <>
                 <button type="button" className="secondary-button" onClick={() => setModal(null)}>
                   Cancelar
                 </button>
-                <button type="button" className="danger-button" onClick={confirmDelete}>
-                  Excluir
+                <button
+                  type="button"
+                  className={modal.mode === 'delete' ? 'danger-button' : undefined}
+                  onClick={modal.mode === 'delete' ? confirmDelete : confirmUnlock}
+                >
+                  {modal.mode === 'delete' ? 'Excluir' : 'Desbloquear'}
                 </button>
               </>
             ) : (
@@ -163,7 +172,7 @@ export function UsersPage() {
             )
           }
         >
-          {modal.mode !== 'delete' ? (
+          {modal.mode === 'create' || modal.mode === 'edit' ? (
             <form id="user-form" className="stack-form" onSubmit={submitForm}>
               <input
                 type="email"
@@ -193,4 +202,17 @@ export function UsersPage() {
 
 function formatDate(value) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
+}
+
+function getModalTitle(mode) {
+  if (mode === 'create') return 'Novo usuário';
+  if (mode === 'edit') return 'Editar usuário';
+  if (mode === 'unlock') return 'Desbloquear usuário';
+  return 'Excluir usuário';
+}
+
+function getModalDescription(mode) {
+  if (mode === 'delete') return 'Confirme a exclusão lógica deste usuário.';
+  if (mode === 'unlock') return 'As tentativas de login serão zeradas e o acesso será liberado novamente.';
+  return 'Preencha os dados necessários.';
 }
