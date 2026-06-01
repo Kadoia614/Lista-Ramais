@@ -32,8 +32,10 @@ export function LoginPage() {
     <main className="app-shell auth-shell">
       <section className="hero-card auth-card">
         <span className="eyebrow">Autenticação</span>
-        <h1>Entrar no sistema</h1>
-        <p>Somente o admin autenticado pode acessar o painel e cadastrar novos usuários.</p>
+        <h1 className="mt-3 text-slate-950">Entrar no sistema</h1>
+        <p className="mt-2">
+          Acesse o painel para cadastrar usuários, atualizar ramais e manter a consulta sempre em dia.
+        </p>
 
         <form className="stack-form" onSubmit={handleSubmit}>
           <input

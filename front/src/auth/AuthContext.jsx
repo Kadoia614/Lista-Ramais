@@ -1,17 +1,16 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, clearToken, getToken, setToken } from '../api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
     const token = getToken();
 
     if (!token) {
-      setLoading(false);
       return;
     }
 
@@ -25,17 +24,17 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email, password) {
+  const login = useCallback(async (email, password) => {
     const response = await api.login(email, password);
     setToken(response.token);
     setUser(response.user);
     return response.user;
-  }
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     clearToken();
     setUser(null);
-  }
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -46,12 +45,13 @@ export function AuthProvider({ children }) {
       logout,
       setUser,
     }),
-    [user, loading],
+    [user, loading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
 

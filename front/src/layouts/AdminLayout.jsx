@@ -10,10 +10,10 @@ export function AdminLayout() {
         <div>
           <span className="eyebrow">Painel administrativo</span>
           <h1>Ramais</h1>
-          <p>{user?.email}</p>
+          <p className="mt-2 break-all">{user?.email}</p>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Navegação administrativa">
           <NavLink to="/admin/users" className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}>
             Usuários
           </NavLink>
@@ -31,7 +31,7 @@ export function AdminLayout() {
           </NavLink>
         </nav>
 
-        <button type="button" className="danger-button" onClick={logout}>
+        <button type="button" className="danger-button mt-auto" onClick={logout}>
           Sair
         </button>
       </aside>

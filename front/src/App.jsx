@@ -8,7 +8,7 @@ import { RamaisPage } from './pages/admin/RamaisPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { PublicPage } from './pages/PublicPage';
 import { ToastProvider } from './toast/ToastContext';
-import "./App.css";
+
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 

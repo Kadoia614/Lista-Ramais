@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { DataTable } from '../../components/DataTable';
 import { Modal } from '../../components/Modal';
@@ -14,11 +14,7 @@ export function RamaisPage() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    loadRamais();
-  }, []);
-
-  async function loadRamais() {
+  const loadRamais = useCallback(async () => {
     setLoading(true);
     try {
       setRamais(await api.listRamais());
@@ -27,7 +23,12 @@ export function RamaisPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [pushToast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRamais();
+  }, [loadRamais]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
